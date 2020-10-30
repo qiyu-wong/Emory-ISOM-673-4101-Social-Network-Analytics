@@ -1,0 +1,540 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(igraph)
+library(data.table)
+library(readr)
+library(tidyr)
+library(igraph)
+library(dplyr)
+library(matrixcalc)
+library(rlist)
+library(sets)
+df <- read.csv("C:/Users/10331/OneDrive/Desktop/social_and_task_network.csv")
+```
+
+```{r}
+social <- df[,-4]
+task <- df[-3 ]
+social
+```
+
+```{r}
+#question1
+#(a:social)
+print("Social")
+social <- social[social$social_tie != 0,]
+row.names(social)=NULL
+gs <- graph.data.frame(social,directed = TRUE)
+gs
+```
+```{r}
+print("Social")
+dins <- degree(gs,v = V(gs),mode = "in")
+douts <- degree(gs,mode = "out")
+print("in")
+dins
+print("out")
+douts
+```
+
+```{r}
+closes <- closeness(gs,mode = "all")
+print("Social")
+closes
+```
+
+```{r}
+print("Social")
+betws <- betweenness(gs)
+betws
+```
+
+```{r}
+print("Social")
+prs <- page.rank(gs)
+prs$vector
+```
+
+```{r}
+#(b:social)
+print("Social")
+print("cor:indegree-outdegree")
+cor(dins,douts)
+print("cor:indegree-closeness")
+cor(dins,closes)
+print("cor:indegree-betweenness")
+cor(dins,betws)
+print("cor:indegree-page.rank")
+cor(dins,prs$vector)
+print("cor:outdegree-closeness")
+cor(douts,closes)
+print("cor:outdegree-betweenness")
+cor(douts,betws)
+print("cor:outdegree-page.rank")
+cor(douts,prs$vector)
+print("cor:closeness-betweenness")
+cor(closes,betws)
+print("cor:closeness-page.rank")
+cor(closes,prs$vector)
+print("cor:betweenness-page.rank")
+cor(betws,prs$vector)
+```
+From the above, we can see that the most closely correlated measures are indegree and outdegree.
+Which means for most nodes, the social relationships are reciprocated.
+
+
+```{r}
+#(a:task)
+print("Task")
+task <- task[task$task_tie != 0,]
+row.names(task)=NULL
+gt <- graph.data.frame(task,directed = TRUE)
+gt
+```
+```{r}
+print("Task")
+dint <- degree(gt,v = V(gt),mode = "in")
+doutt <- degree(gt,mode = "out")
+print("in")
+dint
+print("out")
+doutt
+```
+```{r}
+closet <- closeness(gt,mode = "all")
+print("Task")
+closet
+```
+```{r}
+print("Task")
+betwt <- betweenness(gt)
+betwt
+```
+```{r}
+print("Task")
+prt <- page.rank(gt)
+prt$vector
+```
+```{r}
+#(b:Task)
+print("Task")
+print("cor:indegree-outdegree")
+cor(dint,doutt)
+print("cor:indegree-closeness")
+cor(dint,closet)
+print("cor:indegree-betweenness")
+cor(dint,betwt)
+print("cor:indegree-page.rank")
+cor(dint,prt$vector)
+print("cor:outdegree-closeness")
+cor(doutt,closet)
+print("cor:outdegree-betweenness")
+cor(doutt,betwt)
+print("cor:outdegree-page.rank")
+cor(doutt,prt$vector)
+print("cor:closeness-betweenness")
+cor(closet,betwt)
+print("cor:closeness-page.rank")
+cor(closet,prt$vector)
+print("cor:betweenness-page.rank")
+cor(betwt,prt$vector)
+```
+From the above, we can see that indegree and outdegree are perfectly correlated.
+Which means for all nodes, the task relationships are reciprocated.
+
+```{r}
+#Correlation Comparision of two table
+print("Social and Task")
+print("cor:indegree")
+#cor(dins,dint)
+print("0.5578869")
+print("cor:outdegree")
+#cor(douts,doutt)
+print("0.6996636")
+print("cor:closeness")
+#cor(closes,closet)
+print("0.4132661")
+print("cor:betweenness")
+#cor(betws,betwt)
+print("0.7516857")
+print("cor:page.rank")
+#cor(prs$vector,prt$vector)
+print("0.1730575")
+
+#THose code works on my local machine, but when i create HTML with KNIT, it fails so I print out the output manually.
+```
+
+The highest correlation existing between two betweenness scores, Which makes sense too.
+The people that are information bridge could be bridge in both social and task relationships.
+And these people performs as coordinator or gateholder.
+
+```{r}
+#Question2
+#(a)
+social$type <- "Social"
+colnames(social)[3] = "Tie"
+means = mean(social$Tie)
+for (i in 1:nrow(social)){
+  if (social[i,"Tie"]>means){
+    social[i,"Strength"] = "Strong"
+  } else{
+    social[i,"Strength"] = "Weak"
+  }
+}
+task$type <- "Task"
+colnames(task)[3] = "Tie"
+meant = mean(task$Tie)
+for (i in 1:nrow(task)){
+  if (task[i,"Tie"]>meant){
+    task[i,"Strength"] = "Strong"
+  } else{
+    task[i,"Strength"] = "Weak"
+  }
+}
+comb <- rbind(social,task)
+row.names(comb)=NULL
+g <- graph.data.frame(comb)
+comb
+```
+
+```{r}
+gc <- graph.data.frame(comb,directed = TRUE)
+gc
+```
+```{r}
+plot(gc, edge.color = c("light blue","red")[as.factor(E(gc)$Strength)])
+```
+```{r}
+ties <-matrix(ncol = 2)
+strong = comb[comb$Strength=='Strong',]
+unique_ego = unique(strong$ego)
+unique_alter = unique(strong$alter)
+strong_list = unique(do.call(c, list(unique_ego, unique_alter)))
+```
+
+```{r}
+for (i in 1:length(strong_list)){
+  tmp = strong[strong$ego==strong_list[i], ]
+  if (length(unique(tmp$alter))>1){
+    tmp1 <-combn(unique(tmp$alter),m=2)
+    for (j in 1:ncol(tmp1) ){
+      v1=tmp1[1,j]
+      v2 = tmp1[2,j]
+      ties <-rbind(c(v1,v2), ties)
+      ties <-rbind(c(v2,v1), ties)
+    }
+  }
+}
+```
+
+```{r}
+nodes = unique(df$ego)
+ties=na.omit(ties)
+ties= ties[!duplicated(ties),]
+final <- graph.data.frame(ties, vertices = nodes, directed = TRUE)
+
+E(difference(final,g, byname = TRUE))
+```
+There are 15 nodes involved holds strong ties and could form Triadic Closure.
+However, there's 11 violations of Strong Triadic Closure, under the definition of mean.
+
+
+```{r}
+#(b)
+social1 = social[,]
+medians = median(social1$Tie)
+for (i in 1:nrow(social1)){
+  if (social1[i,"Tie"]>medians){
+    social1[i,"Strength"] = "Strong"
+  } else{
+    social1[i,"Strength"] = "Weak"
+  }
+}
+task1 <- task[,]
+mediant = median(task1$Tie)
+for (i in 1:nrow(task1)){
+  if (task1[i,"Tie"]>mediant){
+    task1[i,"Strength"] = "Strong"
+  } else{
+    task1[i,"Strength"] = "Weak"
+  }
+}
+comb2 <- rbind(social1,task1)
+row.names(comb2)=NULL
+comb2
+```
+```{r}
+ties <-matrix(ncol = 2)
+strong = comb2[comb2$Strength=='Strong',]
+unique_ego = unique(strong$ego)
+unique_alter = unique(strong$alter)
+strong_list = unique(do.call(c, list(unique_ego, unique_alter)))
+```
+
+```{r}
+for (i in 1:length(strong_list)){
+  tmp = strong[strong$ego==strong_list[i], ]
+  if (length(unique(tmp$alter))>1){
+    tmp1 <-combn(unique(tmp$alter),m=2)
+    for (j in 1:ncol(tmp1) ){
+      v1=tmp1[1,j]
+      v2 = tmp1[2,j]
+      ties <-rbind(c(v1,v2), ties)
+      ties <-rbind(c(v2,v1), ties)
+    }
+  }
+}
+```
+
+```{r}
+ties=na.omit(ties)
+ties= ties[!duplicated(ties),]
+final <- graph.data.frame(ties, vertices = nodes, directed = TRUE)
+
+E(difference(final,g, byname = TRUE))
+```
+There are 75 violations of Strong Triadic Closure, under the defination of median.
+
+```{r}
+comb1 <- comb[,-c(3,4)]
+comb1 <- rbind(comb1[,c("ego", "alter","Strength")],comb1[,c("alter", "ego","Strength")])
+comb1[comb1$Strength == "Strong","Strength"] = 1
+comb1[comb1$Strength == "Weak","Strength"] = 0
+comb1$Strength <- as.numeric(comb1$Strength)
+comb1 <- aggregate(comb1[,3],comb1[,-3],sum)
+colnames(comb1)[3] = "Strength"
+for (i in nrow(comb1)){
+  for (j in nrow(comb1)){
+    if ((comb1[i,"ego"] == comb1[j,"alter"]) & (comb1[j,"ego"] == comb1[i,"alter"])){
+      if (comb1[i,"Strength"] == "Strong"){
+        comb1[i,"Strength"] = "Strong"
+        comb1[j,"Strength"] = "Strong"
+      }else if(comb1[j,"Strength"] == "Strong"){
+        comb1[i,"Strength"] = "Strong"
+        comb1[j,"Strength"] = "Strong"
+      }
+    }
+  }
+}
+comb1[comb1$Strength == 2,"Strength"] = "Strong"
+comb1[comb1$Strength == 1,"Strength"] = "Strong"
+comb1[comb1$Strength == 0,"Strength"] = "Weak"
+comb1
+```
+
+```{r}
+gc1 <- graph.data.frame(comb1,directed = FALSE)
+gc1 <- simplify(gc1,remove.multiple = TRUE,remove.loops = TRUE)
+plot(gc1, edge.color = c("light blue","red")[as.factor(E(gc)$Strength)])
+gc1
+```
+The graph above shows strong tie as blue and weak tie as red. As looking at it closer, we can identify the nodes that have
+strong tie with two other nodes. Finding all those combinations, we can come up with a idea of Strong Triadic Closure.
+If the other two nodes are linked also, then it follows Strong Triadic Closure. 
+If the other nodes are disconnected, then it's violent Strong Triadic Closure.
+
+
+```{r}
+#Question3
+#(a)
+
+#Difinition1: Mean
+
+gs <- graph.data.frame(social,directed = TRUE)
+gt <- graph.data.frame(task,directed = TRUE)
+
+betws <- betweenness(gs)
+ebetws <- edge_betweenness(gs, e = E(gs), directed = TRUE)
+print("Social node:")
+betws
+print("Social edge:")
+ebetws
+
+betwt <- betweenness(gt)
+print("Task node:")
+betwt
+ebetwt <- edge_betweenness(gt, e = E(gt), directed = TRUE)
+print("Task edge:")
+ebetwt
+```
+```{r}
+#(b)
+
+#Difinition2: Mean
+
+datas <- data.frame(E(gs)$Strength,ebetws)
+datas <- datas[order(-ebetws),]
+datas
+```
+```{r}
+datat <- data.frame(E(gt)$Strength,ebetwt)
+datat <- datat[order(-ebetwt),]
+datat
+```
+```{r}
+#(a)
+
+#Definition2: Median
+
+gs <- graph.data.frame(social1,directed = TRUE)
+gt <- graph.data.frame(task1,directed = TRUE)
+
+betws <- betweenness(gs)
+ebetws <- edge_betweenness(gs, e = E(gs), directed = TRUE)
+print("Social node:")
+betws
+print("Social edge:")
+ebetws
+
+betwt <- betweenness(gt)
+print("Task node:")
+betwt
+ebetwt <- edge_betweenness(gt, e = E(gt), directed = TRUE)
+print("Task edge:")
+ebetwt
+```
+```{r}
+#(b)
+
+#Difinition2: Median
+
+datas <- data.frame(E(gs)$Strength,ebetws)
+datas <- datas[order(-ebetws),]
+datas
+```
+```{r}
+datat <- data.frame(E(gt)$Strength,ebetwt)
+datat <- datat[order(-ebetwt),]
+datat
+```
+As shown in the data table above, for both definition:
+The high social betweenness tend to be weaker, and high social betweenness tend to be stronger.
+And high task betweenness tend to be stronger, low task betweenness tend to be weaker.
+It makes sense, because task edges have high betweenness process more information going back and forth between two people. And taks edges with low betweenness tend to be less commnicated so they are weaker.
+While, high betweenness among social edges, those people might be to distracted by so many friends, so the link is weaker.
+And low betweenness among social edges, meaning those are their friend of a only few, so they commnicate more frequently,
+so those are stronger.
+
+```{r}
+#Question4
+
+gs <- graph.data.frame(social,directed = TRUE)
+gt <- graph.data.frame(task,directed = TRUE)
+
+gsm <- as_adjacency_matrix(gs)
+gtm <- as_adjacency_matrix(gt)
+```
+
+
+```{r}
+distance <- distances(gs)
+distance
+print("No relationship/Walk at all for Social:")
+sum(distance > 100 )/2
+```
+
+```{r}
+gsm <- graph.adjacency(gsm,mode = "undirected")
+gsm <- simplify(gsm,remove.multiple = TRUE,remove.loops = TRUE)
+plot(gsm)
+```
+And yes we can see from the graph after removing all the multiples, and prove our calculation above.
+Since there's only two standing alone, the number of no walk is combination of those two and everything else.
+
+```{r}
+distance <- distances(gt)
+distance
+print("No relationship/Walk at all for Task:")
+sum(distance > 100 )/2
+```
+
+
+```{r}
+gtm <- graph.adjacency(gtm,mode = "undirected")
+gtm <- simplify(gtm,remove.multiple = TRUE,remove.loops = TRUE)
+plot(gtm)
+```
+And yes we can see from the graph after removing all the multiples, and prove our calculation above.
+Since there's only two standing alone, the number of no walk is combination of those two and everything else.
+
+```{r}
+#Question5
+#network-level measure of degree centrality is equal to 1
+#As network centrality is calculated by max minus all other degrees
+#We could easily find that a star network of one level with any number of nodes would have network centrality = 1.
+
+star1 = make_star(10, "undirected")
+plot(star1)
+
+print("Star1 centrality")
+dc1 <- sum((max(degree(star1)) - degree(star1)))/((length(V(star1)) -1)*(length(V(star1))-2))
+dc1
+close <- closeness(star1,mode = "all")
+max(close)
+mean(close)
+sd(close)
+betw <- betweenness(star1)
+mean(betw)
+sd(betw)
+
+star2 = make_star(30, "undirected")
+plot(star2)
+
+print("Star2 centrality")
+dc2 <- sum((max(degree(star2)) - degree(star2)))/((length(V(star2)) -1)* (length(V(star2))-2))
+dc2
+close <- closeness(star2,mode = "all")
+max(close)
+mean(close)
+sd(close)
+betw <- betweenness(star2)
+mean(betw)
+sd(betw)
+```
+From the result, we can see that although both star1 and star2 have network centrality of 1,
+And we can see that the mean of closeness and betweenness is lower,
+and std of closeness and betweenness are quite big, which might indicates that
+the network is quite centralized one nodes, so the relationship hold  true for these
+networks for other measures of centrality.
+
+```{r}
+#network-level measure of degree centrality is equal to 0
+#As network centrality is calculated by max minus all other degrees
+#We could easily find that a ring network with any number of nodes would have network centrality = 0.
+
+ring1 = make_ring(10)
+plot(ring1)
+print("ring1 centrality")
+dc1 <- sum((max(degree(ring1)) - degree(ring1)))/((length(V(ring1)) -1)* (length(V(ring1))-2))
+dc1
+close <- closeness(ring1,mode = "all")
+max(close)
+mean(close)
+sd(close)
+betw <- betweenness(ring1)
+mean(betw)
+sd(betw)
+
+ring2 = make_ring(30)
+plot(ring2)
+print("ring2 centrality")
+dc2 <- sum((max(degree(ring2)) - degree(ring2)))/((length(V(ring2)) -1)* (length(V(ring2))-2))
+dc2
+close <- closeness(ring2,mode = "all")
+max(close)
+mean(close)
+sd(close)
+betw <- betweenness(ring2)
+mean(betw)
+sd(betw)
+```
+From the result, we can see that although both ring1 and ring2 have network centrality of 0,
+And we can see that the mean of of closeness and betweenness is quite big, 
+while std of closeness and betweenness are quite small, which might indicates that
+the network is quite spreaded out and not so centralized to one nodes.
+So the relationship hold  true for these networks for other measures of centrality.
